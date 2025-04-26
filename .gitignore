@@ -1,0 +1,12 @@
+# Ignore everything in the root and subdirectories by default
+*
+
+# Exceptions
+!.gitignore
+!/code/
+!/code/**
+!/requirements.txt
+
+# Ignore Python cache files
+__pycache__/
+*.pyc

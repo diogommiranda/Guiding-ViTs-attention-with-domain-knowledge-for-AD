@@ -211,107 +211,124 @@ def view_random_image(target_dir, random_arg):
     return img_data, nifti_img
 
 def plot_loss_curves(history, save_dir=None):
-  """
-  Plots separate loss curves for training and validation metrics.
-  Saves the plots in the directory specified by `save_dir` if provided.
-  
-  Args:
-    history: History object from model training.
-    save_dir: Directory to save the plots. If None, plots are not saved.
-  """
-  loss = history.history['loss']
-  val_loss = history.history['val_loss']
+    """
+    Plots separate loss curves for training and validation metrics.
+    Saves the plots in the directory specified by `save_dir` if provided.
+    
+    Args:
+        history: History object from model training.
+        save_dir: Directory to save the plots. If None, plots are not saved.
+    """
+    
+    loss = history.history['loss']
+    accuracy = history.history['accuracy']
+    
+    val_loss = None
+    val_accuracy = None
+    
+    if 'val_loss' in history.history:
+        val_loss = history.history['val_loss']
+    if 'val_accuracy' in history.history:
+        val_accuracy = history.history['val_accuracy']
 
-  accuracy = history.history['accuracy']
-  val_accuracy = history.history['val_accuracy']
+    epochs = range(len(history.history['loss']))
+    
+    # Plot loss
+    fig_losses = plt.figure(figsize=(9, 6))
+    plt.plot(epochs, loss, label='training_loss')
+    if val_loss:
+        plt.plot(epochs, val_loss, label='val_loss')
+    plt.title('Loss')
+    plt.xlabel('Epochs')
+    plt.legend()
+    plt.ylim(0,3)
+    
+    if save_dir:
+        save_path = os.path.join(save_dir, "loss_curves.png")
+        try:
+            plt.savefig(save_path)
+            plt.close(fig_losses)
+        except Exception as e:
+            print(f"Error saving loss curves: {e}")
 
-  epochs = range(len(history.history['loss']))
-  
-  # Plot loss
-  fig_losses = plt.figure(figsize=(9, 6))
-  plt.plot(epochs, loss, label='training_loss')
-  plt.plot(epochs, val_loss, label='val_loss')
-  plt.title('Loss')
-  plt.xlabel('Epochs')
-  plt.legend()
-  plt.ylim(0,2)
-  
-  if save_dir:
-    save_path = os.path.join(save_dir, "loss_curves.png")
-    try:
-        plt.savefig(save_path)
-        plt.close(fig_losses)
-    except Exception as e:
-        print(f"Error saving loss curves: {e}")
-
-  # Plot accuracy
-  fig_accuracies = plt.figure(figsize=(9, 6))
-  plt.plot(epochs, accuracy, label='training_accuracy')
-  plt.plot(epochs, val_accuracy, label='val_accuracy')
-  plt.title('Accuracy')
-  plt.xlabel('Epochs')
-  plt.legend()
-  
-  if save_dir:
-    save_path = os.path.join(save_dir, "accuracy_curves.png")
-    try:
-        plt.savefig(save_path)
-        plt.close(fig_accuracies)
-    except Exception as e:
-        print(f"Error saving accuracy curves: {e}")
+    # Plot accuracy
+    fig_accuracies = plt.figure(figsize=(9, 6))
+    plt.plot(epochs, accuracy, label='training_accuracy')
+    if val_accuracy:
+        plt.plot(epochs, val_accuracy, label='val_accuracy')
+    plt.title('Accuracy')
+    plt.xlabel('Epochs')
+    plt.legend()
+    
+    if save_dir:
+        save_path = os.path.join(save_dir, "accuracy_curves.png")
+        try:
+            plt.savefig(save_path)
+            plt.close(fig_accuracies)
+        except Exception as e:
+            print(f"Error saving accuracy curves: {e}")
 
 
-def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(10, 10), text_size=15):
-  """Makes a labelled confusion matrix comparing predictions and ground truth labels.
+def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(10, 10), text_size=15, save_dir=None):
+    """Makes a labelled confusion matrix comparing predictions and ground truth labels.
 
-  If classes is passed, confusion matrix will be labelled, if not, integer class values
-  will be used.
+    If classes is passed, confusion matrix will be labelled, if not, integer class values
+    will be used.
 
-  Args:
-    y_true: Array of truth labels (must be same shape as y_pred).
-    y_pred: Array of predicted labels (must be same shape as y_true).
-    classes: Array of class labels (e.g. string form). If `None`, integer labels are used.
-    figsize: Size of output figure (default=(10, 10)).
-    text_size: Size of output figure text (default=15).
+    Args:
+        y_true: Array of truth labels (must be same shape as y_pred).
+        y_pred: Array of predicted labels (must be same shape as y_true).
+        classes: Array of class labels (e.g. string form). If `None`, integer labels are used.
+        figsize: Size of output figure (default=(10, 10)).
+        text_size: Size of output figure text (default=15).
 
-  Returns:
-    A labelled confusion matrix plot comparing y_true and y_pred.
-  """
-  # Create the confusion matrix
-  cm = confusion_matrix(y_true, y_pred)
-  cm_norm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis] # normalize it
-  n_classes = cm.shape[0] # find the number of classes we're dealing with
+    Returns:
+        A labelled confusion matrix plot comparing y_true and y_pred.
+    """
+    # Create the confusion matrix
+    cm = confusion_matrix(y_true, y_pred)
+    cm_norm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis] # normalize it
+    n_classes = cm.shape[0] # find the number of classes we're dealing with
 
-  # Plot the figure and make it pretty
-  fig, ax = plt.subplots(figsize=figsize)
-  cax = ax.matshow(cm, cmap=plt.cm.Blues) # colors will represent how 'correct' a class is, darker == better
-  fig.colorbar(cax)
+    # Plot the figure and make it pretty
+    fig, ax = plt.subplots(figsize=figsize)
+    cax = ax.matshow(cm, cmap=plt.cm.Blues) # colors will represent how 'correct' a class is, darker == better
+    fig.colorbar(cax)
 
-  # Are there a list of classes?
-  if classes:
-    labels = classes
-  else:
-    labels = np.arange(cm.shape[0])
+    # Are there a list of classes?
+    if classes:
+        labels = classes
+    else:
+        labels = np.arange(cm.shape[0])
 
-  # Label the axes
-  ax.set(title="Confusion Matrix",
-         xlabel="Predicted label",
-         ylabel="True label",
-         xticks=np.arange(n_classes), # create enough axis slots for each class
-         yticks=np.arange(n_classes),
-         xticklabels=labels, # axes will labeled with class names (if they exist) or ints
-         yticklabels=labels)
+    # Label the axes
+    ax.set(title="Confusion Matrix",
+            xlabel="Predicted label",
+            ylabel="True label",
+            xticks=np.arange(n_classes), # create enough axis slots for each class
+            yticks=np.arange(n_classes),
+            xticklabels=labels, # axes will labeled with class names (if they exist) or ints
+            yticklabels=labels)
 
-  # Make x-axis labels appear on bottom
-  ax.xaxis.set_label_position("bottom")
-  ax.xaxis.tick_bottom()
+    # Make x-axis labels appear on bottom
+    ax.xaxis.set_label_position("bottom")
+    ax.xaxis.tick_bottom()
 
-  # Set the threshold for different colors
-  threshold = (cm.max() + cm.min()) / 2.
+    # Set the threshold for different colors
+    threshold = (cm.max() + cm.min()) / 2.
 
-  # Plot the text on each cell
-  for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-    plt.text(j, i, f"{cm[i, j]} ({cm_norm[i, j]*100:.1f}%)",
-             horizontalalignment="center",
-             color="white" if cm[i, j] > threshold else "black",
-             size=text_size)
+    # Plot the text on each cell
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, f"{cm[i, j]} ({cm_norm[i, j]*100:.1f}%)",
+                horizontalalignment="center",
+                color="white" if cm[i, j] > threshold else "black",
+                size=text_size)
+    
+    # Save the figure if a save directory is provided
+    if save_dir:
+        save_path = os.path.join(save_dir, "cm.png")
+        try:
+            plt.savefig(save_path)
+            plt.close(fig)
+        except Exception as e:
+            print(f"Error saving loss curves: {e}")

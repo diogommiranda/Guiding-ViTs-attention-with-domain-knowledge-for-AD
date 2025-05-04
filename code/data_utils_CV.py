@@ -174,6 +174,7 @@ def create_dataset(paths, labels, batch_size, volume_shape, is_training, seed, m
         )
         # Minmax normalization
         volume_normalized = (volume - min_val_tf) / range_val_tf
+        # volume_normalized = tf.clip_by_value(volume_normalized, 0.0, 1.0) # be careful when doing data augmentation, because values can be outside [0,1] - might need to adapt this line
         
         # Apply the mask to the volume
         if roi_mask is not None:

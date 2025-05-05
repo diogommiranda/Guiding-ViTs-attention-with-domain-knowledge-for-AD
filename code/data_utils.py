@@ -174,6 +174,7 @@ def create_dataset(paths, labels, batch_size, volume_shape, is_training, seed, m
         )
         # Minmax normalization
         volume_normalized = (volume - min_val_tf) / range_val_tf
+        # volume_normalized = tf.clip_by_value(volume_normalized, 0.0, 1.0) # quando fizer data augmentation ter prestar atenção a isto porque os valores podem estar fora de 0 e 1. 
         
         # Apply the mask to the volume
         if roi_mask is not None:
@@ -209,12 +210,27 @@ def create_dataset(paths, labels, batch_size, volume_shape, is_training, seed, m
     
     return ds
 
+
+def extract_subject_id(filepath):
+    """
+    Extracts subject ID from the filename.
+    Assumes the filename starts with a string 'XXX_X_XXXX' that is the subject ID.
+    """
+    try:
+        filename = Path(filepath).name
+        parts = filename.split('_')
+        subject_id = '_'.join(parts[:3])
+        return subject_id
+    except Exception as e:
+        print(f"Warning: Could not extract subject ID from {filepath}. Error: {e}. Returning full filename.")
+        return filename 
+
 def clean_zone_identifier_files(directory):
-    """Remove all Zone.Identifier files in the given directory and its subdirectories.
-    Zone.Identifier files are created in Linux when moving files from Windows.
+    """
+    Remove all Zone.Identifier files in the given directory and its subdirectories.
+    Zone.Identifier files are sometimes created when moving files across directories.
     """
     removed_count = 0
-    
     for root, dirs, files in os.walk(directory):
         for file in files:
             if file.endswith(':Zone.Identifier'):
@@ -224,110 +240,5 @@ def clean_zone_identifier_files(directory):
                     removed_count += 1
                 except Exception as e:
                     print(f"Error removing {file_path}: {e}")
-    
-    print(f"Removed {removed_count} Zone.Identifier files")
-
-if __name__ == '__main__':
-
-    # Set path for dataset directory
-    NORMALIZATION = "mni_reg"
-    DATASET = "smci_pmci"
-    DATA_DIR = Path("datasets/") / NORMALIZATION / DATASET
-    ROI_MASK_PATH = str(Path("/home/diogommiranda/tese/masks/ROI_MASK.nii"))
-
-    # Set batch size
-    BATCH_SIZE = 4
-    
-    # Expected volume shape of PET file
-    VOLUME_SHAPE = (91, 109, 91)
-    
-    # Random seed for shuffling
-    seed = 42
-    
-    train_paths, train_labels, class_map = get_paths_and_labels(DATA_DIR, 'train')
-    train_paths = np.array(train_paths)
-    train_labels = np.array(train_labels)
-    
-    # Calculate minmax values for train set
-    minmax_min, minmax_max = calculate_min_max(train_paths)
-    print(f"Minmax values for normalization: {minmax_min}, {minmax_max}")
-
-    # Create train dataset
-    print("\n--- Creating Train Dataset ---")
-    train_dataset = create_dataset(
-        paths=train_paths,
-        labels=train_labels,
-        batch_size=BATCH_SIZE,
-        volume_shape=VOLUME_SHAPE,
-        is_training=True, 
-        seed=seed,
-        min_val=minmax_min, 
-        max_val=minmax_max,
-        mask_path=ROI_MASK_PATH
-        )
-    
-    # Create validation dataset
-    print("\n--- Creating Validation Dataset ---")
-    validation_paths, validation_labels, _ = get_paths_and_labels(DATA_DIR, 'validation', class_map)
-    validation_paths = np.array(validation_paths)
-    validation_labels = np.array(validation_labels)
-    
-    validation_dataset = create_dataset(
-        paths=validation_paths,
-        labels=validation_labels,
-        batch_size=BATCH_SIZE,
-        volume_shape=VOLUME_SHAPE,
-        is_training=False, 
-        seed=seed,
-        min_val=minmax_min, 
-        max_val=minmax_max,
-        mask_path=ROI_MASK_PATH
-    )
-
-    # Create test dataset
-    print("\n--- Creating Test Dataset ---")
-    test_paths, test_labels, _ = get_paths_and_labels(DATA_DIR, 'test', class_map)
-    test_paths = np.array(test_paths)
-    test_labels = np.array(test_labels)
-
-    test_dataset = create_dataset(
-        paths=test_paths,
-        labels=test_labels,
-        batch_size=BATCH_SIZE,
-        volume_shape=VOLUME_SHAPE,
-        is_training=False, 
-        seed=seed,
-        min_val=minmax_min, 
-        max_val=minmax_max,
-        mask_path=ROI_MASK_PATH
-    )
-    
-    # Verify one batch if datasets were created
-    if train_dataset:
-        print("\n--- Verifying one train batch ---")
-        for volume_batch, label_batch in train_dataset.take(1):
-            print("Train Volume batch shape:", volume_batch.shape)
-            print("Train Label batch shape:", label_batch.shape)
-            print("Train Volume batch dtype:", volume_batch.dtype)
-            print("Train Label batch dtype:", label_batch.dtype)
-            print("Sample label:", label_batch[0].numpy()) 
-            
-    if validation_dataset:
-        print("\n--- Verifying one validation batch ---")
-        for volume_batch, label_batch in validation_dataset.take(1):
-            print("Validation Volume batch shape:", volume_batch.shape)
-            print("Validation Label batch shape:", label_batch.shape)
-            print("Validation Volume batch dtype:", volume_batch.dtype)
-            print("Validation Label batch dtype:", label_batch.dtype)
-            print("Sample label:", label_batch[0].numpy()) 
-
-    if test_dataset:
-        print("\n--- Verifying one test batch ---")
-        for volume_batch, label_batch in test_dataset.take(1):
-            print("Test Volume batch shape:", volume_batch.shape)
-            print("Test Label batch shape:", label_batch.shape)
-            print("Test Volume batch dtype:", volume_batch.dtype)
-            print("Test Label batch dtype:", label_batch.dtype)
-            print("Sample label:", label_batch[0].numpy())
-            
-    print(len(train_dataset), len(validation_dataset), len(test_dataset))
+    if removed_count > 0:
+        print(f"Removed {removed_count} Zone.Identifier files")

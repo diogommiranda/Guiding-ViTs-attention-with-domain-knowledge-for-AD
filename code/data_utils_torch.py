@@ -1,4 +1,4 @@
-# This file contains functions to load NIfTI files and create TensorFlow datasets for training and testing.
+# This file contains functions to load NIfTI files and create pytorch dataloaders for training and testing.
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -136,7 +136,7 @@ class AdniDataset(Dataset):
             img = nib.load(path)
             volume = img.get_fdata(dtype=np.float32)
             volume = (volume - self.min_val) / (self.max_val - self.min_val)
-            volume = np.clip(volume, 0.0, 1.0) # be careful when doing data augmentation, because values can be outside [0,1] - might need to adapt this line
+            #volume = np.clip(volume, 0.0, 1.0) # quando fizer data augmentation ter prestar atenção a isto porque os valores podem estar fora de 0 e 1. 
             if self.mask is not None:
                 volume = np.multiply(volume, self.mask)
             # Add channel dimension - the model expects (C, W, H, D)
@@ -211,25 +211,19 @@ if __name__ == '__main__':
     DATA_DIR = Path("datasets/") / NORMALIZATION / DATASET
     ROI_MASK_PATH = str(Path("/home/diogommiranda/tese/masks/ROI_MASK.nii"))
 
-    # Set batch size
-    BATCH_SIZE = 4
-    
-    # Expected volume shape of PET file
     VOLUME_SHAPE = (91, 109, 91)
-    
-    # Random seed for shuffling
     seed = 42
     
+    BATCH_SIZE = 4
+
     print("\n--- Creating train set ---")
     train_paths, train_labels, class_map = get_paths_and_labels(DATA_DIR, 'train')
     train_paths = np.array(train_paths)
     train_labels = np.array(train_labels)
     
-    # Calculate minmax values for train set
     minmax_min, minmax_max = calculate_min_max(train_paths)
     print(f"Minmax values for normalization: {minmax_min}, {minmax_max}")
 
-    # Create train dataset
     train_data = create_dataloader(
         paths=train_paths,
         labels=train_labels,
@@ -242,7 +236,6 @@ if __name__ == '__main__':
         mask_path=ROI_MASK_PATH
         )
     
-    # Create test dataset
     print("\n--- Creating test set ---")
     test_paths, test_labels, _ = get_paths_and_labels(DATA_DIR, 'test', class_map)
     test_paths = np.array(test_paths)
@@ -260,7 +253,6 @@ if __name__ == '__main__':
         mask_path=ROI_MASK_PATH
     )
     
-    # Verify one batch if datasets were created
     if train_data:
         print("\n--- Verifying one train batch ---")
         volume_batch, label_batch = next(iter(train_data))

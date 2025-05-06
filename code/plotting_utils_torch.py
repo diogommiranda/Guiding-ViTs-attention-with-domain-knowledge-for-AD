@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import itertools
 from sklearn.metrics import confusion_matrix
 import random
+import torch
 
 def view_image_data(img_data):
     """Views a 3D image data
@@ -16,10 +17,11 @@ def view_image_data(img_data):
     """
     # We assume the 3D image data is in the first 3 dimensions if it is a 4D tensor
     if len(img_data.shape) in (3, 4):
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-        
         if len(img_data.shape) == 4:
-            img_data = np.squeeze(img_data, axis=0)
+            img_data = img_data.squeeze(dim=0)
+        img_data = img_data.permute(2, 1, 0)
+        
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
         
         # Get middle slices
         x_mid = img_data.shape[0] // 2
@@ -100,7 +102,9 @@ def view_image(dataset_dir, subject_id, date):
             x_mid = img_data.shape[0] // 2
             y_mid = img_data.shape[1] // 2
             z_mid = img_data.shape[2] // 2
-         
+
+            
+            
             # Display the slices
             axes[0].imshow(np.rot90(img_data[x_mid, :, :]), cmap='gray')
             axes[0].set_title(f'Sagittal Slice (X={x_mid})')
@@ -187,9 +191,6 @@ def view_random_image(target_dir, random_arg):
     # We assume the 3D image data is in the first 3 dimensions if it is a 4D tensor
     if len(img_data.shape) in (3, 4):
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-        
-        if len(img_data.shape) == 4:
-            img_data = np.squeeze(img_data, axis=0)
         
         # Get middle slices 
         x_mid = img_data.shape[0] // 2

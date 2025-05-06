@@ -80,7 +80,7 @@ def calculate_min_max(paths):
         tuple: (float, float) minimum and maximum values found.
     """
     if len(paths)==0:
-        raise(ValueError("No paths provided for minmax calculation."))
+        raise ValueError("No paths provided for minmax calculation.")
 
     print(f"Calculating minmax across {len(paths)} files...")
     global_min = np.inf
@@ -174,7 +174,8 @@ def create_dataset(paths, labels, batch_size, volume_shape, is_training, seed, m
         )
         # Minmax normalization
         volume_normalized = (volume - min_val_tf) / range_val_tf
-        # volume_normalized = tf.clip_by_value(volume_normalized, 0.0, 1.0) # quando fizer data augmentation ter prestar atenção a isto porque os valores podem estar fora de 0 e 1. 
+        volume_normalized = tf.clip_by_value(volume_normalized, 0.0, 1.0) # quando fizer data augmentation ter prestar atenção a isto porque os valores podem estar fora de 0 e 1.
+        # volume_normalized = volume/3.0
         
         # Apply the mask to the volume
         if roi_mask is not None:

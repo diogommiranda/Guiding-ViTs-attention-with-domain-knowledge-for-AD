@@ -90,7 +90,7 @@ class AdniDataset(Dataset):
     Args:
         Dataset (_type_): _description_
     """
-    def __init__(self, paths, labels, volume_shape, min_val, max_val, mask_path=None):
+    def __init__(self, paths, labels, volume_shape, min_val, max_val, is_training, mask_path=None):
         """
         Args:
             paths (list): List of file paths (strings).
@@ -108,6 +108,7 @@ class AdniDataset(Dataset):
         self.max_val = max_val
         self.mask_path = mask_path
         self.mask = None
+        self.is_training = is_training
         
         if mask_path is not None:
             try:
@@ -136,12 +137,21 @@ class AdniDataset(Dataset):
             img = nib.load(path)
             volume = img.get_fdata(dtype=np.float32)
             volume = (volume - self.min_val) / (self.max_val - self.min_val)
-            #volume = np.clip(volume, 0.0, 1.0) # quando fizer data augmentation ter prestar atenção a isto porque os valores podem estar fora de 0 e 1. 
+            volume = np.clip(volume, 0.0, 1.0) 
+                        
             if self.mask is not None:
+                # Apply mask to volume 
                 volume = np.multiply(volume, self.mask)
-            # Add channel dimension - the model expects (C, W, H, D)
+                
+            if self.is_training and random.random() > 0.5:
+                # Random coronal view flipping
+                volume = np.flip(volume, axis=0)    
+            
+            # Add channel dimension
             volume = np.expand_dims(volume, axis=0)
-            img_tensor = torch.tensor(volume, dtype=torch.float32)
+            volume = np.transpose(volume, (0, 3, 2, 1)) # Change to (C, D, H, W)
+            
+            img_tensor = torch.tensor(volume.copy(), dtype=torch.float32)
             label_tensor = torch.tensor(label, dtype=torch.int32)
             
         except Exception as e:
@@ -184,7 +194,7 @@ def create_dataloader(paths, labels, batch_size, volume_shape, is_training, seed
         if torch.cuda.is_available():
             torch.cuda.manual_seed(seed)
     
-    dataset = AdniDataset(paths, labels, volume_shape, min_val, max_val, mask_path)
+    dataset = AdniDataset(paths, labels, volume_shape, min_val, max_val, is_training, mask_path)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=is_training, num_workers=4)
     
     return dataloader
@@ -216,7 +226,7 @@ if __name__ == '__main__':
     
     BATCH_SIZE = 4
 
-    print("\n--- Creating train set ---")
+    print("\nCreating train set...\n")
     train_paths, train_labels, class_map = get_paths_and_labels(DATA_DIR, 'train')
     train_paths = np.array(train_paths)
     train_labels = np.array(train_labels)
@@ -236,7 +246,7 @@ if __name__ == '__main__':
         mask_path=ROI_MASK_PATH
         )
     
-    print("\n--- Creating test set ---")
+    print("\nCreating test set...")
     test_paths, test_labels, _ = get_paths_and_labels(DATA_DIR, 'test', class_map)
     test_paths = np.array(test_paths)
     test_labels = np.array(test_labels)
@@ -254,7 +264,7 @@ if __name__ == '__main__':
     )
     
     if train_data:
-        print("\n--- Verifying one train batch ---")
+        print("\nVerifying one train batch:\n")
         volume_batch, label_batch = next(iter(train_data))
         print("Train Volume batch shape:", volume_batch.shape)
         print("Train Label batch shape:", label_batch.shape)
@@ -263,7 +273,7 @@ if __name__ == '__main__':
         print("Sample label:", label_batch[0].numpy()) 
             
     if test_data:
-        print("\n--- Verifying one test batch ---")
+        print("\nVerifying one test batch:\n")
         volume_batch, label_batch = next(iter(test_data))
         print("Test Volume batch shape:", volume_batch.shape)
         print("Test Label batch shape:", label_batch.shape)

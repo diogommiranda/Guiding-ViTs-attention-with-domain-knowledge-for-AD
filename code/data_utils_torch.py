@@ -145,14 +145,14 @@ class AdniDataset(Dataset):
                 
             if self.is_training and random.random() > 0.5:
                 # Random coronal view flipping
-                volume = np.flip(volume, axis=0)    
+                volume = np.flip(volume, axis=0)  
             
             # Add channel dimension
             volume = np.expand_dims(volume, axis=0)
             volume = np.transpose(volume, (0, 3, 2, 1)) # Change to (C, D, H, W)
             
             img_tensor = torch.tensor(volume.copy(), dtype=torch.float32)
-            label_tensor = torch.tensor(label, dtype=torch.int32)
+            label_tensor = torch.tensor(label, dtype=torch.float32)
             
         except Exception as e:
             print(f"Error loading file {path}: {e}")

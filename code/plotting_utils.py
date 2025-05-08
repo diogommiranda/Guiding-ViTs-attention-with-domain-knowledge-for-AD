@@ -18,6 +18,11 @@ def view_image_data(img_data):
     if len(img_data.shape) in (3, 4):
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
         
+        if len(img_data.shape) == 4:
+            img_data = np.squeeze(img_data, axis=-1)  # Remove the last dimension if it's 4D
+        
+        img_data = np.transpose(img_data, (2, 1, 0))  # Transpose to (X, Y, Z) for plotting
+        
         # Get middle slices
         x_mid = img_data.shape[0] // 2
         y_mid = img_data.shape[1] // 2

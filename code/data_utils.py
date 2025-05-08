@@ -5,6 +5,7 @@ import nibabel as nib
 import numpy as np
 from pathlib import Path
 import os
+import random
 
 AUTOTUNE = tf.data.AUTOTUNE
 
@@ -183,9 +184,11 @@ def create_dataset(paths, labels, batch_size, volume_shape, is_training, seed, m
             volume_normalized = tf.multiply(volume_normalized, roi_mask)
         else:
             print(f"\nNo mask applied.\n")
-            
+        
+        volume_normalized = tf.transpose(volume_normalized, (2, 1, 0, 3)) # Transpose to (D, H, W, C)
+        
         # Set shape
-        expected_shape = (volume_shape[0], volume_shape[1], volume_shape[2], 1)
+        expected_shape = (volume_shape[2], volume_shape[1], volume_shape[0], 1)
         volume_normalized.set_shape(expected_shape)
 
         # Cast label

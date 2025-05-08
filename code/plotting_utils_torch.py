@@ -248,7 +248,7 @@ def plot_loss_curves(history, save_dir=None):
     plt.title('Loss')
     plt.xlabel('Epochs')
     plt.legend()
-    plt.ylim(0,3)
+    plt.ylim(0,4)
     
     if save_dir:
         save_path = os.path.join(save_dir, "loss_curves.png")

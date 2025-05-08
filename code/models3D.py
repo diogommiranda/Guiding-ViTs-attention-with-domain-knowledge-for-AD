@@ -33,7 +33,7 @@ class ResnetFeatureExtractor(nn.Module):
             for param in self.features.parameters():
                 param.requires_grad = False
         else:
-            print("Training from scratch...")
+            print("\nNo pretrained weights used. Training from scratch...\n")
             # Define the architecture - resnet until stage 3
             self.features = nn.Sequential(
                 resnet.conv1,
@@ -67,6 +67,23 @@ class ResNetViT(nn.Module):
     
     def forward(self, x):
         x = self.resnet_feature_extractor(x)
+        x = self.vit(x)
+        # vit returns a tuple (loss is the first element)
+        if isinstance(x, tuple):
+            x = x[0]
+        else:
+            pass
+        return x
+    
+class pureViT(nn.Module):
+    """
+    Pure ViT model.
+    """
+    def __init__(self, vit_config):
+        super().__init__()
+        self.vit = ViT(**vit_config)
+    
+    def forward(self, x):
         x = self.vit(x)
         # vit returns a tuple (loss is the first element)
         if isinstance(x, tuple):

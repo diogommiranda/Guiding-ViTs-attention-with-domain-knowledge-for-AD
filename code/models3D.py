@@ -12,7 +12,7 @@ class ResnetFeatureExtractor(nn.Module):
         resnet = ResNet(**resnet_config).to(device)
                 
         if use_pretrained:
-            print("Loading pretrained weights...")
+            print(f"Loading pretrained weights from path {trained_path}\n")
             if trained_path is None:
                 raise ValueError("trained_path must be provided if use_pretrained is True")
             else:

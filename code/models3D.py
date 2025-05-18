@@ -34,8 +34,8 @@ class ResnetFeatureExtractor(nn.Module):
                 param.requires_grad = False
                 
             # Unfreeze stage 3 weights - might improve transformer performance if the last stage is not freezed? check this
-            #for param in resnet.layer3.parameters():
-                #param.requires_grad = True
+            for param in resnet.layer3.parameters():
+                param.requires_grad = True
         else:
             print("\nNo pretrained weights used. Training from scratch...\n")
             # Define the architecture - resnet until stage 3

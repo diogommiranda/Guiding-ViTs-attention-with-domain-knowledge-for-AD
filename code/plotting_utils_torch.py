@@ -19,6 +19,7 @@ def view_image_data(img_data):
     if len(img_data.shape) in (3, 4):
         if len(img_data.shape) == 4:
             img_data = img_data.squeeze(dim=0)
+        # Transpose to X, Y, Z axis
         img_data = img_data.permute(2, 1, 0)
         
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))

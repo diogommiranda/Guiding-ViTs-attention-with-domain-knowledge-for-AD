@@ -84,13 +84,14 @@ def calculate_min_max(paths):
     print(f"Calculated Min: {global_min}, Max: {global_max}")
     return float(global_min), float(global_max)
 
+
 class AdniDataset(Dataset):
     """ Dataset class for loading NIfTI files and their labels.
 
     Args:
         Dataset (_type_): _description_
     """
-    def __init__(self, paths, labels, volume_shape, min_val, max_val, is_training, mask_path=None):
+    def __init__(self, paths, labels, volume_shape, is_training, min_val, max_val, mask_path=None):
         """
         Args:
             paths (list): List of file paths (strings).
@@ -136,9 +137,10 @@ class AdniDataset(Dataset):
         try:
             img = nib.load(path)
             volume = img.get_fdata(dtype=np.float32)
+            # Perform intensity normalization
             volume = (volume - self.min_val) / (self.max_val - self.min_val)
-            volume = np.clip(volume, 0.0, 1.0) 
-                        
+            volume = np.clip(volume, 0.0, 1.0)
+
             if self.mask is not None:
                 # Apply mask to volume 
                 volume = np.multiply(volume, self.mask)
@@ -194,7 +196,7 @@ def create_dataloader(paths, labels, batch_size, volume_shape, is_training, seed
         if torch.cuda.is_available():
             torch.cuda.manual_seed(seed)
     
-    dataset = AdniDataset(paths, labels, volume_shape, min_val, max_val, is_training, mask_path)
+    dataset = AdniDataset(paths=paths, labels=labels, volume_shape=volume_shape, is_training=is_training, min_val=min_val, max_val=max_val, mask_path=mask_path)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=is_training, num_workers=4)
     
     return dataloader
@@ -211,18 +213,36 @@ def extract_subject_id(filepath):
         return subject_id
     except Exception as e:
         print(f"Warning: Could not extract subject ID from {filepath}. Error: {e}. Returning full filename.")
-        return filename 
+        return filename
+    
+def clean_zone_identifier_files(directory):
+    """
+    Remove all Zone.Identifier files in the given directory and its subdirectories.
+    Zone.Identifier files are sometimes created when moving files across directories.
+    """
+    removed_count = 0
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith(':Zone.Identifier'):
+                file_path = os.path.join(root, file)
+                try:
+                    os.remove(file_path)
+                    removed_count += 1
+                except Exception as e:
+                    print(f"Error removing {file_path}: {e}")
+    if removed_count > 0:
+        print(f"Removed {removed_count} Zone.Identifier files")
 
 if __name__ == '__main__':
 
     # Set path for dataset directory
-    NORMALIZATION = "mni_reg"
+    NORMALIZATION = "mni_reg_CV"
     DATASET = "smci_pmci"
     DATA_DIR = Path("datasets/") / NORMALIZATION / DATASET
-    ROI_MASK_PATH = str(Path("/home/diogommiranda/tese/masks/ROI_MASK.nii"))
-
+    ROI_MASK_PATH = None
+    
     VOLUME_SHAPE = (91, 109, 91)
-    seed = 42
+    seed = 10
     
     BATCH_SIZE = 4
 
@@ -241,7 +261,7 @@ if __name__ == '__main__':
         volume_shape=VOLUME_SHAPE,
         is_training=True, 
         seed=seed,
-        min_val=minmax_min, 
+        min_val=minmax_min,
         max_val=minmax_max,
         mask_path=ROI_MASK_PATH
         )
@@ -258,7 +278,7 @@ if __name__ == '__main__':
         volume_shape=VOLUME_SHAPE,
         is_training=False, 
         seed=seed,
-        min_val=minmax_min, 
+        min_val=minmax_min,
         max_val=minmax_max,
         mask_path=ROI_MASK_PATH
     )
@@ -270,7 +290,9 @@ if __name__ == '__main__':
         print("Train Label batch shape:", label_batch.shape)
         print("Train Volume batch dtype:", volume_batch.dtype)
         print("Train Label batch dtype:", label_batch.dtype)
-        print("Sample label:", label_batch[0].numpy()) 
+        print("Sample label:", label_batch[0].numpy())
+        print(f"Min value in batch: {volume_batch.min().item()}")
+        print(f"Max value in batch: {volume_batch.max().item()}")
             
     if test_data:
         print("\nVerifying one test batch:\n")
@@ -280,5 +302,7 @@ if __name__ == '__main__':
         print("Test Volume batch dtype:", volume_batch.dtype)
         print("Test Label batch dtype:", label_batch.dtype)
         print("Sample label:", label_batch[0].numpy())
+        print(f"Min value in batch: {volume_batch.min().item()}")
+        print(f"Max value in batch: {volume_batch.max().item()}")
     
             

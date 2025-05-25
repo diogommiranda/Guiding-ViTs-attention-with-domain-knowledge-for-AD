@@ -6,48 +6,21 @@ class ResnetFeatureExtractor(nn.Module):
     """
     Resnet feature extractor. ResNet34 until stage 3.
     """
-    def __init__(self, resnet_config, device, trained_path=None, use_pretrained=False):
+    def __init__(self, resnet_config, device):
         super().__init__()
         self.device = device
         resnet = ResNet(**resnet_config).to(device)
                 
-        if use_pretrained:
-            print(f"Loading pretrained weights from path {trained_path}\n")
-            if trained_path is None:
-                raise ValueError("trained_path must be provided if use_pretrained is True")
-            else:
-                resnet.load_state_dict(torch.load(trained_path, weights_only=True, map_location=self.device))
-        
-            # Define the architecture - resnet until stage 3
-            self.features = nn.Sequential(
-                resnet.conv1,
-                resnet.bn1,
-                resnet.act,
-                resnet.maxpool,
-                resnet.layer1,
-                resnet.layer2,
-                resnet.layer3
-            ).to(device)
-            
-            # Freeze the weights of the feature extractor
-            for param in self.features.parameters():
-                param.requires_grad = False
-                
-            # Unfreeze stage 3 weights - might improve transformer performance if the last stage is not freezed? check this
-            for param in resnet.layer3.parameters():
-                param.requires_grad = True
-        else:
-            print("\nNo pretrained weights used. Training from scratch...\n")
-            # Define the architecture - resnet until stage 3
-            self.features = nn.Sequential(
-                resnet.conv1,
-                resnet.bn1,
-                resnet.act,
-                resnet.maxpool,
-                resnet.layer1,
-                resnet.layer2,
-                resnet.layer3
-            ).to(device)
+        # Define the architecture - resnet until stage 3
+        self.features = nn.Sequential(
+            resnet.conv1,
+            resnet.bn1,
+            resnet.act,
+            resnet.maxpool,
+            resnet.layer1,
+            resnet.layer2,
+            resnet.layer3
+        ).to(device)
             
     def forward(self, x):
         return self.features(x)
@@ -93,7 +66,7 @@ class pureViT(nn.Module):
         if isinstance(x, tuple):
             x = x[0]
         else:
-            pass
+            raise ValueError("Expected output to be a tuple, but got: {}".format(type(x)))
         return x
     
 if __name__ == '__main__':
@@ -104,20 +77,15 @@ if __name__ == '__main__':
         'spatial_dims': 3,
         'n_input_channels': 1,
         'conv1_t_stride': 2,
-        'num_classes': 1, # doesn't matter
+        'num_classes': 1, 
         'shortcut_type': 'B',
-        'bias_downsample': False
+        'bias_downsample': True
     }
     
-    use_pretrained = False
-    if use_pretrained:
-        resnet_path = "/home/diogommiranda/tese/outputs/torch/full_brain/fixed_lr/CROSS_VALIDATION/saved_models/LR=1.0e-05_WD=1e-04 (sgd)/model.pth"
-    else:
-        resnet_path = None
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
-    feature_extractor = ResnetFeatureExtractor(resnet_config=resnet_config, device=device, trained_path=resnet_path, use_pretrained=use_pretrained)
+    feature_extractor = ResnetFeatureExtractor(resnet_config=resnet_config, device=device)
     input_shape = (1, 1, 91, 109, 91) 
     output_shape = feature_extractor.get_output_shape(input_shape)
     print(f"Output shape: {output_shape}")

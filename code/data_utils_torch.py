@@ -91,7 +91,7 @@ class AdniDataset(Dataset):
     Args:
         Dataset (_type_): _description_
     """
-    def __init__(self, paths, labels, volume_shape, is_training, min_val, max_val, mask_path=None):
+    def __init__(self, paths, labels, volume_shape, is_training, min_val, max_val, mask_path=None, apply_padding=False):
         """
         Args:
             paths (list): List of file paths (strings).
@@ -110,8 +110,9 @@ class AdniDataset(Dataset):
         self.mask_path = mask_path
         self.mask = None
         self.is_training = is_training
+        self.apply_padding = apply_padding
         
-        if mask_path is not None:
+        if self.mask_path is not None:
             try:
                 mask_img = nib.load(mask_path)
                 mask_volume = mask_img.get_fdata(dtype=np.float32)
@@ -145,6 +146,16 @@ class AdniDataset(Dataset):
                 # Apply mask to volume 
                 volume = np.multiply(volume, self.mask)
                 
+            if self.apply_padding:
+                # Expected volume shape of the original image is (91, 109, 91)
+                # We will pad the input image to (96, 112, 96) only when using PureViT to make the input size divisible by the patch size (16, 16, 16). 
+                padding = (
+                    (2,3), # Pad width from 91 to 96
+                    (1,2), # Pad height from 109 to 112
+                    (2,3)  # Pad depth from 91 to 96
+                )
+                volume = np.pad(volume, padding, mode='edge')
+                
             if self.is_training and random.random() > 0.5:
                 # Random coronal view flipping
                 volume = np.flip(volume, axis=0)  
@@ -162,7 +173,7 @@ class AdniDataset(Dataset):
         
         return img_tensor, label_tensor
     
-def create_dataloader(paths, labels, batch_size, volume_shape, is_training, seed, min_val, max_val, mask_path=None):
+def create_dataloader(paths, labels, batch_size, volume_shape, is_training, seed, min_val, max_val, apply_padding=False, mask_path=None):
     """
     Creates a DataLoader from the list of paths and labels.
 
@@ -196,7 +207,7 @@ def create_dataloader(paths, labels, batch_size, volume_shape, is_training, seed
         if torch.cuda.is_available():
             torch.cuda.manual_seed(seed)
     
-    dataset = AdniDataset(paths=paths, labels=labels, volume_shape=volume_shape, is_training=is_training, min_val=min_val, max_val=max_val, mask_path=mask_path)
+    dataset = AdniDataset(paths=paths, labels=labels, volume_shape=volume_shape, is_training=is_training, min_val=min_val, max_val=max_val, apply_padding=apply_padding, mask_path=mask_path)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=is_training, num_workers=4)
     
     return dataloader
@@ -240,6 +251,7 @@ if __name__ == '__main__':
     DATASET = "smci_pmci"
     DATA_DIR = Path("datasets/") / NORMALIZATION / DATASET
     ROI_MASK_PATH = None
+    apply_padding = False
     
     VOLUME_SHAPE = (91, 109, 91)
     seed = 10
@@ -263,6 +275,7 @@ if __name__ == '__main__':
         seed=seed,
         min_val=minmax_min,
         max_val=minmax_max,
+        apply_padding=apply_padding,
         mask_path=ROI_MASK_PATH
         )
     
@@ -280,6 +293,7 @@ if __name__ == '__main__':
         seed=seed,
         min_val=minmax_min,
         max_val=minmax_max,
+        apply_padding=apply_padding,
         mask_path=ROI_MASK_PATH
     )
     

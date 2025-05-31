@@ -4,7 +4,7 @@ from monai.networks.nets import ResNet, ViT
 
 class ResnetFeatureExtractor(nn.Module):
     """
-    Resnet feature extractor. ResNet34 until stage 3.
+    Resnet feature extractor. ResNet until stage 3.
     """
     def __init__(self, resnet_config):
         super().__init__()
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     
     resnet_config = {
         'block': 'basic',
-        'layers': [3, 4, 6, 3],
+        'layers': [2, 2, 2, 2],
         'block_inplanes': [64, 128, 256, 512],
         'spatial_dims': 3,
         'n_input_channels': 1,

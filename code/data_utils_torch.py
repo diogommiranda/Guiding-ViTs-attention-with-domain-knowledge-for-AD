@@ -7,7 +7,6 @@ import numpy as np
 from pathlib import Path
 import os
 import random
-import time
 
 def get_paths_and_labels(data_dir, split, class_map=None):
     """

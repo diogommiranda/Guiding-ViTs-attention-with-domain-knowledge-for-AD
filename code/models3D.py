@@ -279,7 +279,7 @@ if __name__ == '__main__':
     }
     
     USE_MODEL = "hybrid" # Choose model: "hybrid", "resnet_extractor", "purevit"
-    SAVE_ATTENTION = True # Choose whether to save attention maps or not
+    SAVE_ATTENTION = True # Choose whether to save ViT attention maps
     
     if SAVE_ATTENTION:
         purevit_config['save_attn'] = True
@@ -316,7 +316,7 @@ if __name__ == '__main__':
     else:
         raise ValueError("Invalid model choice. Use 'resnet_extractor' or 'purevit'")
     
-    if SAVE_ATTENTION:
+    if SAVE_ATTENTION and USE_MODEL != "resnet_extractor":
         print(f"Attention maps shape: {len(attention_maps)} layers, each with shape {attention_maps[0].shape}")
         attn_map = model.get_attention_map(layer=7, head=None, average_heads=False)
         print(f"Attention map shape: {attn_map.shape}")

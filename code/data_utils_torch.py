@@ -186,7 +186,8 @@ def create_dataloader(paths, labels, batch_size, volume_shape, is_training, seed
         min_val (float): The minimum value used for normalization.
         max_val (float): The maximum value used for normalization.
         mask_path (str): Path to the mask file (shares the same volume shape as the input data).
-                         If None, no mask is applied.
+                         If None, no mask is applied. Otherwise, the mask is applied to mask the input data.
+                         It was only used for some resnet experiments and mostly remains none.
     Returns:
         DataLoader: The DataLoader ready for training/evaluation.
                      Returns None if paths list is empty.

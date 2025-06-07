@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from monai.networks.nets import ResNet, ViT
 
 class ResnetFeatureExtractor(nn.Module):
@@ -222,6 +223,38 @@ class pureViT(nn.Module):
             for i in range(10):
                 row_str = " ".join([f"{val:.3f}" for val in attn_sample[i, :10]])
                 print(f"Token {i:2d}: {row_str}")
+                
+def upsample_vit_attention(att_cls_vector, image_shape, vit_grid_shape):
+    """
+    Upsample ViT attention class token vector to match the image shape.
+    Creates a voxel-wise attention volume with the class token attention values.
+    
+    Args:
+        att_cls_vector: Attention class token vector from ViT excluding CLS token (shape: [sequence_length-1])
+        image_shape: Target image shape (D_img, H_img, W_img)
+        vit_grid_shape: ViT grid shape (D_vit, H_vit, W_vit)
+    Returns:
+        att_volume: Upsampled attention volume (shape: [D_img, H_img, W_img])
+    """
+
+    B, seq_len = att_cls_vector.shape
+    
+    D_img, H_img, W_img = image_shape
+    D_vit, H_vit, W_vit = vit_grid_shape
+
+    assert seq_len == D_vit * H_vit * W_vit, \
+        f"att_cls_token_vector length {len(att_cls_vector)} mismatch with vit_grid_shape {vit_grid_shape}" 
+    
+    att_cls_vector = att_cls_vector.reshape(B, 1, D_vit, H_vit, W_vit)  # Reshape to (B, C, D_vit, H_vit, W_vit)
+    att_volume = F.interpolate(
+        att_cls_vector,
+        size=(D_img, H_img, W_img),
+        mode='nearest-exact'
+    )
+    
+    att_volume = att_volume.squeeze(1) # Remove channel dimension, shape: (B, D_img, H_img, W_img)
+                
+    return att_volume
     
 if __name__ == '__main__':
     

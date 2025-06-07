@@ -25,9 +25,9 @@ def view_image_data(img_data):
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
         
         # Get middle slices
-        x_mid = img_data.shape[0] // 2
-        y_mid = img_data.shape[1] // 2
-        z_mid = img_data.shape[2] // 2
+        x_mid = (img_data.shape[0]) // 2
+        y_mid = (img_data.shape[1]) // 2 
+        z_mid = (img_data.shape[2]) // 2 
          
         # Display the slices
         axes[0].imshow(np.rot90(img_data[x_mid, :, :]), cmap='gray')
@@ -249,7 +249,6 @@ def plot_loss_curves(history, save_dir=None):
     plt.title('Loss')
     plt.xlabel('Epochs')
     plt.legend()
-    plt.ylim(0,4)
     
     if save_dir:
         save_path = os.path.join(save_dir, "loss_curves.png")
@@ -275,8 +274,71 @@ def plot_loss_curves(history, save_dir=None):
             plt.close(fig_accuracies)
         except Exception as e:
             print(f"Error saving accuracy curves: {e}")
+            
+def plot_guidance_losses(history, save_dir):
+    """
+    Plots guidance-related losses.
+    
+    Args:
+        history: History object.
+        save_dir: Directory to save the plots.
+    """
+    
+    epochs = range(len(history['train_guidance_loss']))
+    
+    # --- Plot guidance loss ---
+    fig, ax = plt.subplots(figsize=(9, 6))
+    legend_handles_plot = []
 
+    line, = ax.plot(epochs, history['train_guidance_loss'], label=f'Train guidance loss')
+    legend_handles_plot.append(line)
+    line, = ax.plot(epochs, history['val_guidance_loss'], label=f'Val guidance loss')
+    legend_handles_plot.append(line)
 
+    ax.set_title(f'Guidance Loss')
+    ax.set_xlabel('Epochs')
+    ax.set_ylabel('Loss Value')
+    ax.legend(handles=legend_handles_plot)
+    ax.grid(True)
+
+    save_path = os.path.join(save_dir, f"guidance_loss_curve.png")
+    try:
+        fig.savefig(save_path)
+    except Exception as e:
+        print(f"Error saving guidance loss: {e}")
+        
+    plt.close(fig)
+    
+    # --- Plot penalization term and reward term scores ---
+    fig, ax = plt.subplots(figsize=(9, 6))
+    legend_handles_plot = []
+
+    line, = ax.plot(epochs, history['train_penalization_term_loss'], label='Train penalization term', linestyle='-')
+    legend_handles_plot.append(line)
+    line, = ax.plot(epochs, history['val_penalization_term_loss'], label='Val penalization term',  linestyle='--')
+    legend_handles_plot.append(line)
+    line, = ax.plot(epochs, history['train_reward_term_loss'], label='Train reward term',  linestyle='-')
+    legend_handles_plot.append(line)
+    line, = ax.plot(epochs, history['val_reward_term_loss'], label='Val reward term',  linestyle='--')
+    legend_handles_plot.append(line)
+    
+    ax.set_title(f'Penalization term and Reward term')
+    ax.set_xlabel('Epochs')
+    ax.set_ylabel('Average Attention Score')
+    ax.legend(handles=legend_handles_plot)
+    ax.grid(True)
+    
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    save_path = os.path.join(save_dir, f"term_losses_curves.png")
+    try:
+        fig.savefig(save_path)
+    except Exception as e:
+        print(f"Error saving guidance term losses: {e}")
+        
+    plt.close(fig)
+    
+    
 def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(10, 10), text_size=15, save_dir=None):
     """Makes a labelled confusion matrix comparing predictions and ground truth labels.
 

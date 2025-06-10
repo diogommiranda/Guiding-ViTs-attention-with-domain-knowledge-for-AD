@@ -35,23 +35,29 @@ class ResNetViT(nn.Module):
         self.vit = ViT(**vit_config)
         self.attention_maps = []
     
-    def forward(self, x, return_attention=False):
+    def forward(self, x, return_attention=None):
         self.attention_maps = []
         
         x = self.resnet_feature_extractor(x)
         x, hidden_states = self.vit(x)
     
-        if return_attention:
-            self.extract_attention_maps()
+        if return_attention == 'softmaxed' or return_attention == 'raw':
+            self.extract_attention_maps(return_attention)
         
         return x, self.attention_maps
     
-    def extract_attention_maps(self):
+    def extract_attention_maps(self, return_attention):
         self.attention_maps = []
-        for i, block in enumerate(self.vit.blocks):
-            if hasattr(block.attn, 'att_mat') and block.attn.att_mat is not None:
-                attention_matrix = block.attn.att_mat.detach()
-                self.attention_maps.append(attention_matrix)
+        if return_attention == 'softmaxed':
+            for i, block in enumerate(self.vit.blocks):
+                if hasattr(block.attn, 'att_mat') and block.attn.att_mat is not None:
+                    attention_matrix = block.attn.att_mat.detach()
+                    self.attention_maps.append(attention_matrix)
+        elif return_attention == 'raw':
+            for i, block in enumerate(self.vit.blocks):
+                if hasattr(block.attn, 'att_logits_raw') and block.attn.att_logits_raw is not None:
+                    attention_matrix = block.attn.att_logits_raw.detach()
+                    self.attention_maps.append(attention_matrix)
     
     def get_attention_map(self, layer=None, head=None, average_heads=False):
         """
@@ -135,22 +141,28 @@ class pureViT(nn.Module):
         self.vit = ViT(**vit_config)
         self.attention_maps = []
     
-    def forward(self, x, return_attention=False):
+    def forward(self, x, return_attention=None):
         self.attention_maps = []
         
         x, hidden_states = self.vit(x)
         
-        if return_attention:
-            self.extract_attention_maps()
+        if return_attention == 'softmaxed' or return_attention == 'raw':
+            self.extract_attention_maps(return_attention)
             
         return x, self.attention_maps
         
-    def extract_attention_maps(self):
+    def extract_attention_maps(self, return_attention):
         self.attention_maps = []
-        for i, block in enumerate(self.vit.blocks):
-            if hasattr(block.attn, 'att_mat') and block.attn.att_mat is not None:
-                attention_matrix = block.attn.att_mat.detach()
-                self.attention_maps.append(attention_matrix)
+        if return_attention == 'softmaxed':
+            for i, block in enumerate(self.vit.blocks):
+                if hasattr(block.attn, 'att_mat') and block.attn.att_mat is not None:
+                    attention_matrix = block.attn.att_mat.detach()
+                    self.attention_maps.append(attention_matrix)
+        elif return_attention == 'raw':
+            for i, block in enumerate(self.vit.blocks):
+                if hasattr(block.attn, 'att_logits_raw') and block.attn.att_logits_raw is not None:
+                    attention_matrix = block.attn.att_logits_raw.detach()
+                    self.attention_maps.append(attention_matrix)
     
     def get_attention_map(self, layer=None, head=None, average_heads=False):
         """
@@ -289,7 +301,8 @@ if __name__ == '__main__':
     'spatial_dims': 3,
     'post_activation': 'none',
     'qkv_bias': False,
-    'save_attn': False
+    'save_attn': False,
+    'save_attn_logits': False
     }
     
     purevit_config = {
@@ -308,18 +321,25 @@ if __name__ == '__main__':
     'spatial_dims': 3,
     'post_activation': 'none',
     'qkv_bias': False,
-    'save_attn': True
+    'save_attn': True,
+    'save_attn_logits': False
     }
     
     USE_MODEL = "hybrid" # Choose model: "hybrid", "resnet_extractor", "purevit"
-    SAVE_ATTENTION = True # Choose whether to save ViT attention maps
+    RETURN_ATTENTION = 'raw' # Choose whether to get raw attention logits or softmaxed attention logits or none at all. Options: 'raw', 'softmaxed', other string.
     
-    if SAVE_ATTENTION:
+    if RETURN_ATTENTION == 'raw' or RETURN_ATTENTION == 'softmaxed':
+        print(f"Saving attention maps: {RETURN_ATTENTION}")
         purevit_config['save_attn'] = True
         vit_config['save_attn'] = True
+        purevit_config['save_attn_logits'] = True
+        vit_config['save_attn_logits'] = True
     else:
+        print("Not saving attention maps")
         purevit_config['save_attn'] = False
         vit_config['save_attn'] = False
+        purevit_config['save_attn_logits'] = False
+        vit_config['save_attn_logits'] = False
 
 
     if USE_MODEL == "resnet_extractor":
@@ -335,7 +355,7 @@ if __name__ == '__main__':
         model = ResNetViT(resnet_feature_extractor=resnet_extractor, vit_config=vit_config).to(device)
         
         dummy_input = torch.randn(1, 1, 91, 109, 91).to(device)
-        output, attention_maps = model(dummy_input, return_attention=SAVE_ATTENTION)
+        output, attention_maps = model(dummy_input, return_attention=RETURN_ATTENTION)
         print(f"Output shape: {output.shape}")
           
     elif USE_MODEL == "purevit":
@@ -343,13 +363,13 @@ if __name__ == '__main__':
         model = pureViT(vit_config=purevit_config).to(device)
         
         dummy_input = torch.randn(1, 1, 96, 112, 96).to(device)
-        output, attention_maps = model(dummy_input, return_attention=SAVE_ATTENTION)
+        output, attention_maps = model(dummy_input, return_attention=RETURN_ATTENTION)
         print(f"Output shape: {output.shape}")
             
     else:
         raise ValueError("Invalid model choice. Use 'resnet_extractor' or 'purevit'")
     
-    if SAVE_ATTENTION and USE_MODEL != "resnet_extractor":
+    if (RETURN_ATTENTION == 'raw' or RETURN_ATTENTION == 'softmaxed') and USE_MODEL != "resnet_extractor":
         print(f"Attention maps shape: {len(attention_maps)} layers, each with shape {attention_maps[0].shape}")
         attn_map = model.get_attention_map(layer=7, head=None, average_heads=False)
         print(f"Attention map shape: {attn_map.shape}")

@@ -324,13 +324,46 @@ def plot_guidance_losses(history, save_dir):
     
     ax.set_title(f'Penalization term and Reward term')
     ax.set_xlabel('Epochs')
-    ax.set_ylabel('Average Attention Score')
+    ax.set_ylabel('Loss Value')
     ax.legend(handles=legend_handles_plot)
     ax.grid(True)
     
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     save_path = os.path.join(save_dir, f"term_losses_curves.png")
+    try:
+        fig.savefig(save_path)
+    except Exception as e:
+        print(f"Error saving guidance term losses: {e}")
+        
+    plt.close(fig)
+    
+def plot_average_attention_scores(history, save_dir):
+    
+    epochs = range(len(history['train_avg_att_non_roi']))
+    # --- Plot average roi and non-roi attention scores ---
+    
+    fig, ax = plt.subplots(figsize=(9, 6))
+    legend_handles_plot = []
+
+    line, = ax.plot(epochs, history['train_avg_att_non_roi'], label='Train Avg non-ROI attention', linestyle='-')
+    legend_handles_plot.append(line)
+    line, = ax.plot(epochs, history['val_avg_att_non_roi'], label='Val Avg non-ROI attention',  linestyle='--')
+    legend_handles_plot.append(line)
+    line, = ax.plot(epochs, history['train_avg_att_roi'], label='Train Avg ROI attention',  linestyle='-')
+    legend_handles_plot.append(line)
+    line, = ax.plot(epochs, history['val_avg_att_roi'], label='Val Avg ROI attention',  linestyle='--')
+    legend_handles_plot.append(line)
+    
+    ax.set_title(f'Average attention scores')
+    ax.set_xlabel('Epochs')
+    ax.set_ylabel('Average Attention Score')
+    ax.legend(handles=legend_handles_plot)
+    ax.grid(True)
+    
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    save_path = os.path.join(save_dir, f"avg_attention_scores.png")
     try:
         fig.savefig(save_path)
     except Exception as e:

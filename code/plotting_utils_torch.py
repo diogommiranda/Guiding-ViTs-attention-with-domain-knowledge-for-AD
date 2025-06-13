@@ -371,6 +371,35 @@ def plot_average_attention_scores(history, save_dir):
         
     plt.close(fig)
     
+def plot_correlation(history, save_dir, corr):
+    if corr == 'pearson':
+        corr_name = 'Pearson Correlation'
+        train_corr_values = history['train_pearson_corr']
+        val_corr_values = history['val_pearson_corr']
+    elif corr == 'spearmanr':
+        corr_name = 'Spearmanr Correlation'
+        train_corr_values = history['train_spearmanr_corr']
+        val_corr_values = history['val_spearmanr_corr']
+    else:
+        raise ValueError(f"Unsupported correlation type: {corr}. Supported types are 'pearson' and 'spearmanr'.")
+    
+    epochs = range(len(train_corr_values))
+
+    fig = plt.figure(figsize=(9, 6))
+    plt.plot(epochs, train_corr_values, label=f'Train {corr_name}')
+    plt.plot(epochs, val_corr_values, label=f'Val {corr_name}')
+    
+    plt.title(f'{corr_name} of CLS Tokens and ROI scores')
+    plt.xlabel('Epochs')
+    plt.legend()
+    
+    if save_dir:
+        save_path = os.path.join(save_dir, f"{corr}.png")
+        try:
+            plt.savefig(save_path)
+            plt.close(fig)
+        except Exception as e:
+            print(f"Error saving loss curves: {e}")
     
 def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(10, 10), text_size=15, save_dir=None):
     """Makes a labelled confusion matrix comparing predictions and ground truth labels.

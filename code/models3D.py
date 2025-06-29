@@ -51,12 +51,12 @@ class ResNetViT(nn.Module):
         if return_attention == 'softmaxed':
             for i, block in enumerate(self.vit.blocks):
                 if hasattr(block.attn, 'att_mat') and block.attn.att_mat is not None:
-                    attention_matrix = block.attn.att_mat.detach()
+                    attention_matrix = block.attn.att_mat
                     self.attention_maps.append(attention_matrix)
         elif return_attention == 'raw':
             for i, block in enumerate(self.vit.blocks):
                 if hasattr(block.attn, 'att_logits_raw') and block.attn.att_logits_raw is not None:
-                    attention_matrix = block.attn.att_logits_raw.detach()
+                    attention_matrix = block.attn.att_logits_raw
                     self.attention_maps.append(attention_matrix)
     
     def get_attention_map(self, layer=None, head=None, average_heads=False):
@@ -156,12 +156,12 @@ class pureViT(nn.Module):
         if return_attention == 'softmaxed':
             for i, block in enumerate(self.vit.blocks):
                 if hasattr(block.attn, 'att_mat') and block.attn.att_mat is not None:
-                    attention_matrix = block.attn.att_mat.detach()
+                    attention_matrix = block.attn.att_mat
                     self.attention_maps.append(attention_matrix)
         elif return_attention == 'raw':
             for i, block in enumerate(self.vit.blocks):
                 if hasattr(block.attn, 'att_logits_raw') and block.attn.att_logits_raw is not None:
-                    attention_matrix = block.attn.att_logits_raw.detach()
+                    attention_matrix = block.attn.att_logits_raw
                     self.attention_maps.append(attention_matrix)
     
     def get_attention_map(self, layer=None, head=None, average_heads=False):

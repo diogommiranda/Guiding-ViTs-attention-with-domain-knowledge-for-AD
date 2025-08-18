@@ -1,4 +1,4 @@
-# This file contains functions to load NIfTI files and create pytorch dataloaders for training and testing.
+# This file contains functions to load NIfTI files and create pytorch dataloaders.
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -11,22 +11,21 @@ import random
 def get_paths_and_labels(data_dir, split, class_map=None):
     """
     Finds NIfTI file paths and corresponding integer labels for a given split.
-    Uses an existing class_map if provided, otherwise infers from train dir.
+    Uses an existing class_map if provided (to avoid re-scanning), otherwise infers from train dir.
 
     Args:
-        data_dir (str or Path): Path to the root dataset directory.
-        split (str): 'train' or 'test'.
-        class_map (dict, optional): Predefined mapping from class names to indices.
-                                    If None, inferred from 'train' directory.
+        data_dir: Path to the root dataset directory.
+        split: 'train' or 'test'.
+        class_map: Predefined mapping from class names to indices. If None, inferred from 'train' directory.
 
     Returns:
         tuple: (list of file paths, list of integer labels, dict class_map)
-               Returns ([], [], {}) if the split directory doesn't exist or is empty.
     """
+    
     data_path = Path(data_dir)
     split_path = data_path / split
 
-    # Infer class_map from train directory only if not provided or if split is 'train'
+    # Infer class_map from train directory if not provided or if split is 'train'
     if class_map is None:
         train_path = data_path / "train"
         class_names = sorted([p.name for p in train_path.iterdir() if p.is_dir()], reverse=True)
@@ -50,15 +49,16 @@ def get_paths_and_labels(data_dir, split, class_map=None):
 
 def calculate_min_max(paths):
     """
-    Calculates the minimum and maximum voxel values across a list of NIfTI files.
-    These values are then used for min-max normalization of the data.
+    Calculates the minimum and maximum voxel values across the list of NIfTI files.
+    These values are then used for min-max normalization.
 
     Args:
-        paths (list): List of paths to NIfTI files.
+        paths: List of paths to NIfTI files.
 
     Returns:
         tuple: (float, float) minimum and maximum values found.
     """
+    
     if len(paths)==0:
         raise(ValueError("No paths provided for minmax calculation."))
 
@@ -83,24 +83,22 @@ def calculate_min_max(paths):
     print(f"Calculated Min: {global_min}, Max: {global_max}")
     return float(global_min), float(global_max)
 
-
 class AdniDataset(Dataset):
-    """ Dataset class for loading NIfTI files and their labels.
-
-    Args:
-        Dataset (_type_): _description_
+    """ 
+    Dataset class for loading NIfTI files and their labels.
     """
+    
     def __init__(self, paths, labels, volume_shape, is_training, min_val, max_val, mask_path=None, apply_padding=False):
         """
         Args:
-            paths (list): List of file paths (strings).
-            labels (list): List of corresponding integer labels.
-            volume_shape (tuple): The shape of the NIfTI volumes (W, H, D).
-            min_val (float): The minimum value used for normalization.
-            max_val (float): The maximum value used for normalization.
-            mask_path (str): Path to the mask file (shares the same volume shape as the input data).
-                             If None, no mask is applied.
+            paths: List of file paths (strings).
+            labels: List of corresponding integer labels.
+            volume_shape: The shape of the NIfTI volumes.
+            min_val: The minimum value used for normalization.
+            max_val: The maximum value used for normalization.
+            mask_path: Path to the mask file. If None, no mask is applied. (This parameter is always set to None in our experiments)
         """
+        
         self.paths = paths
         self.labels = labels
         self.volume_shape = volume_shape
@@ -177,20 +175,18 @@ def create_dataloader(paths, labels, batch_size, volume_shape, is_training, seed
     Creates a DataLoader from the list of paths and labels.
 
     Args:
-        paths (list): List of file paths (strings).
-        labels (list): List of corresponding integer labels.
-        batch_size (int): The batch size for the DataLoader.
-        volume_shape (tuple): The shape of the NIfTI volumes (W, H, D).
-        is_training (bool): If True, shuffle the dataset.
-        seed (int): Random seed for shuffling.
-        min_val (float): The minimum value used for normalization.
-        max_val (float): The maximum value used for normalization.
-        mask_path (str): Path to the mask file (shares the same volume shape as the input data).
-                         If None, no mask is applied. Otherwise, the mask is applied to mask the input data.
-                         It was only used for some resnet experiments and mostly remains none.
+        paths: List of file paths (strings).
+        labels: List of corresponding integer labels.
+        batch_size: The batch size for the DataLoader.
+        volume_shape: The shape of the NIfTI volumes (W, H, D).
+        is_training: If True, shuffle the dataset.
+        seed: Random seed for shuffling.
+        min_val: The minimum value used for normalization.
+        max_val: The maximum value used for normalization.
+        mask_path: Path to the mask file. If None, no mask is applied. (This parameter is always set to None in our experiments)
+        
     Returns:
         DataLoader: The DataLoader ready for training/evaluation.
-                     Returns None if paths list is empty.
     """
     
     if len(paths) == 0:
@@ -217,6 +213,7 @@ def extract_subject_id(filepath):
     Extracts subject ID from the filename.
     Assumes the filename starts with a string 'XXX_X_XXXX' that is the subject ID.
     """
+    
     try:
         filename = Path(filepath).name
         parts = filename.split('_')
@@ -229,8 +226,8 @@ def extract_subject_id(filepath):
 def clean_zone_identifier_files(directory):
     """
     Remove all Zone.Identifier files in the given directory and its subdirectories.
-    Zone.Identifier files are sometimes created when moving files across directories.
     """
+    
     removed_count = 0
     for root, dirs, files in os.walk(directory):
         for file in files:
@@ -245,17 +242,15 @@ def clean_zone_identifier_files(directory):
         print(f"Removed {removed_count} Zone.Identifier files")
 
 if __name__ == '__main__':
+    # Example usage (to check if the functions are correctly implemented)
 
-    # Set path for dataset directory
     NORMALIZATION = "mni_reg_CV"
-    DATASET = "smci_pmci"
+    DATASET = "smci_pmci_balanced"
     DATA_DIR = Path("datasets/") / NORMALIZATION / DATASET
     ROI_MASK_PATH = None
     apply_padding = False
-    
     VOLUME_SHAPE = (91, 109, 91)
     seed = 10
-    
     BATCH_SIZE = 4
 
     print("\nCreating train set...\n")

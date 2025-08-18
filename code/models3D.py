@@ -5,13 +5,13 @@ from monai.networks.nets import ResNet, ViT
 
 class ResnetFeatureExtractor(nn.Module):
     """
-    Resnet feature extractor. ResNet until stage 3.
+    Resnet feature extractor model. ResNet-18 until stage 3.
     """
+    
     def __init__(self, resnet_config):
         super().__init__()
         resnet = ResNet(**resnet_config)
                 
-        # Define the architecture - resnet until stage 3
         self.features = nn.Sequential(
             resnet.conv1,
             resnet.bn1,
@@ -27,8 +27,9 @@ class ResnetFeatureExtractor(nn.Module):
     
 class ResNetViT(nn.Module):
     """
-    ResNet Feature Extractor + ViT model.
+    Hybrid ViT model: ResNet feature extractor + ViT.
     """
+    
     def __init__(self, resnet_feature_extractor, vit_config):
         super().__init__()
         self.resnet_feature_extractor = resnet_feature_extractor
@@ -40,13 +41,21 @@ class ResNetViT(nn.Module):
         
         x = self.resnet_feature_extractor(x)
         x, hidden_states = self.vit(x)
-    
+
+        # save raw attention logits or softmaxed attention logits
         if return_attention == 'softmaxed' or return_attention == 'raw':
             self.extract_attention_maps(return_attention)
         
         return x, self.attention_maps
     
     def extract_attention_maps(self, return_attention):
+        """ 
+        Extract attention maps from ViT blocks.
+        
+        Args:
+            return_attention: 'softmaxed' for softmaxed attention maps, 'raw' for raw attention logits
+        """
+        
         self.attention_maps = []
         if return_attention == 'softmaxed':
             for i, block in enumerate(self.vit.blocks):
@@ -61,19 +70,19 @@ class ResNetViT(nn.Module):
     
     def get_attention_map(self, layer=None, head=None, average_heads=False):
         """
-        Get specific attention map or averaged attention maps.
+        Get specific attention map(s) or averaged attention maps.
         
         Args:
             layer: Layer number (None for all layers)
             head: Attention head number (None for all heads)
             average_heads: Whether to average across attention heads
-            
+        
         Returns:
-            Attention map(s)
+            Attention map or list of attention maps
         """
+        
         if not self.attention_maps:
             raise ValueError("No attention maps available. Run forward() with return_attention=True first.")
-        
         
         if layer is not None:
             if layer > len(self.attention_maps) or layer <= 0:
@@ -98,44 +107,12 @@ class ResNetViT(nn.Module):
                     attn_map = attn_map.mean(dim=1)
                 all_maps.append(attn_map)
             return all_maps
-        
-    def visualize_attention_pattern(self, layer, head=None):
-        """
-        Create a simple text representation of attention patterns.
-        
-        Args:
-            layer: Layer to visualize
-            head: Specific head to visualize (None to average all heads)
-        """
-        if not self.attention_maps:
-            raise ValueError("No attention maps available. Run forward() with return_attention=True first.")
-        
-
-        attn_map = self.get_attention_map(layer, head, average_heads=(head is None))
-        
-        # Take first sample in batch
-        attn_sample = attn_map[0].cpu().numpy()
-        
-        print(f"Attention Pattern - Layer {layer}" + (f", Head {head}" if head is not None else " (averaged)"))
-        print(f"Shape: {attn_sample.shape}")
-        print(f"Min: {attn_sample.min():.4f}, Max: {attn_sample.max():.4f}")
-        
-        # Show a small portion of the attention matrix
-        if attn_sample.shape[0] <= 10:
-            print("Attention Matrix:")
-            for i in range(attn_sample.shape[0]):
-                row_str = " ".join([f"{val:.3f}" for val in attn_sample[i, :min(10, attn_sample.shape[1])]])
-                print(f"Token {i:2d}: {row_str}")
-        else:
-            print("Attention Matrix (first 10x10):")
-            for i in range(10):
-                row_str = " ".join([f"{val:.3f}" for val in attn_sample[i, :10]])
-                print(f"Token {i:2d}: {row_str}")
     
 class pureViT(nn.Module):
     """
     Pure ViT model.
     """
+    
     def __init__(self, vit_config):
         super().__init__()
         self.vit = ViT(**vit_config)
@@ -146,12 +123,20 @@ class pureViT(nn.Module):
         
         x, hidden_states = self.vit(x)
         
+        # save raw attention logits or softmaxed attention logits
         if return_attention == 'softmaxed' or return_attention == 'raw':
             self.extract_attention_maps(return_attention)
             
         return x, self.attention_maps
         
     def extract_attention_maps(self, return_attention):
+        """ 
+        Extract attention maps from ViT blocks.
+        
+        Args:
+            return_attention: 'softmaxed' for softmaxed attention maps, 'raw' for raw attention logits
+        """
+        
         self.attention_maps = []
         if return_attention == 'softmaxed':
             for i, block in enumerate(self.vit.blocks):
@@ -166,7 +151,7 @@ class pureViT(nn.Module):
     
     def get_attention_map(self, layer=None, head=None, average_heads=False):
         """
-        Get specific attention map or averaged attention maps.
+        Get specific attention map(s) or averaged attention maps.
         
         Args:
             layer: Layer number (None for all layers)
@@ -174,8 +159,9 @@ class pureViT(nn.Module):
             average_heads: Whether to average across attention heads
             
         Returns:
-            Attention map(s)
+            Attention map or list of attention maps
         """
+        
         if not self.attention_maps:
             raise ValueError("No attention maps available. Run forward() with return_attention=True first.")
         
@@ -202,51 +188,17 @@ class pureViT(nn.Module):
                     attn_map = attn_map.mean(dim=1)
                 all_maps.append(attn_map)
             return all_maps
-        
-    def visualize_attention_pattern(self, layer, head=None):
-        """
-        Create a simple text representation of attention patterns.
-        
-        Args:
-            layer: Layer to visualize
-            head: Specific head to visualize (None to average all heads)
-        """
-        if not self.attention_maps:
-            raise ValueError("No attention maps available. Run forward() with return_attention=True first.")
-        
-
-        attn_map = self.get_attention_map(layer, head, average_heads=(head is None))
-        
-        # Take first sample in batch
-        attn_sample = attn_map[0].cpu().numpy()
-        
-        print(f"Attention Pattern - Layer {layer}" + (f", Head {head}" if head is not None else " (averaged)"))
-        print(f"Shape: {attn_sample.shape}")
-        print(f"Min: {attn_sample.min():.4f}, Max: {attn_sample.max():.4f}")
-        
-        # Show a small portion of the attention matrix
-        if attn_sample.shape[0] <= 10:
-            print("Attention Matrix:")
-            for i in range(attn_sample.shape[0]):
-                row_str = " ".join([f"{val:.3f}" for val in attn_sample[i, :min(10, attn_sample.shape[1])]])
-                print(f"Token {i:2d}: {row_str}")
-        else:
-            print("Attention Matrix (first 10x10):")
-            for i in range(10):
-                row_str = " ".join([f"{val:.3f}" for val in attn_sample[i, :10]])
-                print(f"Token {i:2d}: {row_str}")
                 
 def upsample_vit_attention(att_cls_vector, image_shape, vit_grid_shape):
     """
-    Upsample ViT attention class token vector to match the image shape.
-    Creates a voxel-wise attention volume with the class token attention values.
+    Upsample [CLS] attention vector from ViT to a voxel-wise attention map matching the input image shape.
     
     Args:
-        att_cls_vector: Attention class token vector from ViT excluding CLS token (shape: [sequence_length-1])
-        image_shape: Target image shape (D_img, H_img, W_img)
-        vit_grid_shape: ViT grid shape (D_vit, H_vit, W_vit)
+        att_cls_vector: [CLS] attention vector from ViT excluding the attention value of the [CLS] token.
+        image_shape: Shape of the input image
+        vit_grid_shape: Patch-grid shape at the input of the ViT
     Returns:
-        att_volume: Upsampled attention volume (shape: [D_img, H_img, W_img])
+        att_volume: Upsampled attention map
     """
 
     B, seq_len = att_cls_vector.shape
@@ -264,11 +216,12 @@ def upsample_vit_attention(att_cls_vector, image_shape, vit_grid_shape):
         mode='nearest-exact'
     )
     
-    att_volume = att_volume.squeeze(1) # Remove channel dimension, shape: (B, D_img, H_img, W_img)
+    att_volume = att_volume.squeeze(1) # Remove channel dimension
                 
     return att_volume
     
 if __name__ == '__main__':
+    # Example usage (checking if the models work and if shapes are correct)
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
@@ -326,7 +279,7 @@ if __name__ == '__main__':
     }
     
     USE_MODEL = "hybrid" # Choose model: "hybrid", "resnet_extractor", "purevit"
-    RETURN_ATTENTION = 'raw' # Choose whether to get raw attention logits or softmaxed attention logits or none at all. Options: 'raw', 'softmaxed', other string.
+    RETURN_ATTENTION = 'raw' # Choose whether to get raw attention logits or softmaxed attention logits or none at all. Options: 'raw', 'softmaxed'.
     
     if RETURN_ATTENTION == 'raw' or RETURN_ATTENTION == 'softmaxed':
         print(f"Saving attention maps: {RETURN_ATTENTION}")
@@ -373,9 +326,3 @@ if __name__ == '__main__':
         print(f"Attention maps shape: {len(attention_maps)} layers, each with shape {attention_maps[0].shape}")
         attn_map = model.get_attention_map(layer=7, head=None, average_heads=False)
         print(f"Attention map shape: {attn_map.shape}")
-            
-        #model.visualize_attention_pattern(layer_idx=-1)
-    
-    
-    
-            

@@ -278,7 +278,7 @@ if __name__ == '__main__':
     'save_attn_logits': False
     }
     
-    USE_MODEL = "hybrid" # Choose model: "hybrid", "resnet_extractor", "purevit"
+    USE_MODEL = "resnet" # Choose model: "hybrid", "resnet_extractor", "purevit", "resnet"
     RETURN_ATTENTION = 'raw' # Choose whether to get raw attention logits or softmaxed attention logits or none at all. Options: 'raw', 'softmaxed'.
     
     if RETURN_ATTENTION == 'raw' or RETURN_ATTENTION == 'softmaxed':
@@ -318,11 +318,21 @@ if __name__ == '__main__':
         dummy_input = torch.randn(1, 1, 96, 112, 96).to(device)
         output, attention_maps = model(dummy_input, return_attention=RETURN_ATTENTION)
         print(f"Output shape: {output.shape}")
+        
+    elif USE_MODEL == "resnet":
+        model = ResNet(**resnet_config).to(device)
+        dummy_input = torch.randn(1, 1, 91, 109, 91).to(device)
+        output = model(dummy_input)
+        print(f"Output shape: {output.shape}")
             
     else:
         raise ValueError("Invalid model choice. Use 'resnet_extractor' or 'purevit'")
-    
-    if (RETURN_ATTENTION == 'raw' or RETURN_ATTENTION == 'softmaxed') and USE_MODEL != "resnet_extractor":
+
+    if (RETURN_ATTENTION == 'raw' or RETURN_ATTENTION == 'softmaxed') and USE_MODEL in ["hybrid", "purevit"]:
         print(f"Attention maps shape: {len(attention_maps)} layers, each with shape {attention_maps[0].shape}")
         attn_map = model.get_attention_map(layer=7, head=None, average_heads=False)
         print(f"Attention map shape: {attn_map.shape}")
+        
+    num_params = sum(p.numel() for p in model.parameters())
+    num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total parameters: {num_params}, Trainable parameters: {num_trainable_params}")
